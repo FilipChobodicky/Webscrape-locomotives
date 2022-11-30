@@ -29,7 +29,7 @@ for x in range(1, 2):
 
 
 loco_list = []
-spare_parts_list = []
+
 
 for link in productlinks:
     r = requests.get(link, allow_redirects=False)
@@ -192,14 +192,27 @@ for link in productlinks:
 
     loco_list.append(Locomotives)
 
+spare_part_list = []
+
+for url in productlinks:
+    r = requests.get(url, allow_redirects=False)
+    soup = BeautifulSoup(r.content, 'lxml')
+    try:
+        spare_parts = pd.read_html(
+            str(soup.select('#product-attribute-et-table')))[0].iloc[:, :3]
+        spare_parts['Reference'] = soup.select_one(
+            '.product-head-artNr').text.strip()
+        spare_part_list.append(spare_parts)
+    except:
+        print(url)
 
 df1 = pd.DataFrame(loco_list)
-# # df2 = pd.DataFrame(spare_parts_list)
+df2 = pd.concat(spare_part_list, ignore_index=True)
 # # # # df3 = pd.DataFrame()
 # # # # df4 = pd.DataFrame()
 writer = pd.ExcelWriter('Roco - locomotives.xlsx', engine='xlsxwriter')
 df1.to_excel(writer, sheet_name='Model')
-# df2.to_excel(writer, sheet_name='Spare parts')
+df2.to_excel(writer, sheet_name='Spare parts')
 # # # # df3.to_excel(writer, sheet_name='Documents')
 # # # # df4.to_excel(writer, sheet_name='Photos')
 writer.save()
