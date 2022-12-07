@@ -2,6 +2,7 @@ import requests
 from bs4 import BeautifulSoup
 import pandas as pd
 import xlsxwriter
+import os
 
 baseurl = 'https://www.roco.cc/'
 
@@ -39,7 +40,7 @@ for link in productlinks:
     try:
         reference = soup.find('span', class_='product-head-artNr').text.strip()
     except:
-        reference = ''
+        reference = print(link)
 
     try:
         price = soup.find('div', class_='product-head-price').text.strip()
@@ -153,7 +154,7 @@ for link in productlinks:
         railway_company = ''
 
     try:
-        epoch = soup.find('td', {'data-th': 'epoch'}).text.strip()
+        epoch = soup.find('td', {'data-th': 'Epoch'}).text.strip()
     except:
         epoch = ''
 
@@ -202,19 +203,69 @@ for url in productlinks:
             str(soup.select('#product-attribute-et-table')))[0].iloc[:, :3]
         spare_parts['Reference'] = soup.select_one(
             '.product-head-artNr').text.strip()
+        spare_parts['Manufacturer name'] = 'Rocco'
         spare_part_list.append(spare_parts)
+
     except:
         print(url)
 
+wayslist = []
+imgslist = []
+
+
+def imgpath(folder):
+    try:
+        os.mkdir(os.path.join(os.getcwd(), folder))
+    except:
+        pass
+    os.chdir(os.path.join(os.getcwd(), folder))
+
+    for url in productlinks:
+        r = requests.get(url, allow_redirects=False)
+        soup = BeautifulSoup(r.content, 'html.parser')
+        images = soup.findAll('img')
+
+        for i, image in enumerate(images):
+            if 'def' in image['src']:
+
+                name = 'Roco'
+
+                try:
+                    reference = soup.find(
+                        'span', class_='product-head-artNr').get_text().strip()
+                except Exception as e:
+                    print(link)
+
+                ways = image['src']
+
+                wayslist.append(ways)
+
+                with open(name + '-' + reference + '-' + str(i - 2) + '.jpg', 'wb') as f:
+                    im = requests.get(ways)
+
+                    f.write(im.content)
+
+                imgs = {
+                    'Manufacturer_name': name,
+                    'Reference': reference,
+                    'Photos': (name + '-' + reference +
+                               '-' + str(i - 2) + '.jpg'),
+                }
+                imgslist.append(imgs)
+
+
+imgpath('Rocco - images')
+
+
 df1 = pd.DataFrame(loco_list)
 df2 = pd.concat(spare_part_list, ignore_index=True)
-# # # # df3 = pd.DataFrame()
-# # # # df4 = pd.DataFrame()
+# df3 = pd.DataFrame()
+df4 = pd.DataFrame(imgslist)
 writer = pd.ExcelWriter('Roco - locomotives.xlsx', engine='xlsxwriter')
 df1.to_excel(writer, sheet_name='Model')
 df2.to_excel(writer, sheet_name='Spare parts')
 # # # # df3.to_excel(writer, sheet_name='Documents')
-# # # # df4.to_excel(writer, sheet_name='Photos')
+df4.to_excel(writer, sheet_name='Photos')
 writer.save()
 
 print('Saved to file')
