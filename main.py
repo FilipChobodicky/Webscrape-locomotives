@@ -3,6 +3,8 @@ from bs4 import BeautifulSoup
 import pandas as pd
 import xlsxwriter
 import os
+import re
+
 
 baseurl = 'https://www.roco.cc/'
 
@@ -256,15 +258,68 @@ def imgpath(folder):
 
 imgpath('Rocco - images')
 
+pdflist = []
+doculist = []
+
+
+def pdfpath(pdffolder):
+    try:
+        os.mkdir(os.path.join(os.getcwd(), pdffolder))
+    except:
+        pass
+    os.chdir(os.path.join(os.getcwd(), pdffolder))
+
+    for url in productlinks:
+        r = requests.get(url, allow_redirects=False)
+        soup = BeautifulSoup(r.content, 'html.parser')
+        num_of_pdfs = 0
+        for tag in soup.find_all('a'):
+            on_click = tag.get('onclick')
+            if on_click:
+                pdf = re.findall(r"'([^']*)'", on_click)[0]
+                if 'pdf' in pdf:
+
+                    name = 'Roco'
+
+                try:
+                    reference = soup.find(
+                        'span', class_='product-head-artNr').get_text().strip()
+                except Exception as e:
+                    print(e)
+
+                try:
+                    pdfname = soup.findAll(
+                        'td', class_='col-download-data')[num_of_pdfs].get_text().strip()
+                    num_of_pdfs += 1
+                except Exception as e:
+                    print(e)
+
+                pdflist.append(pdf)
+
+                with open(name + '-' + reference + '-' + pdfname + '-' + '.pdf', 'wb') as f:
+                    im = requests.get(pdf)
+                    f.write(im.content)
+
+                pdfs = {
+                    'Manufacturer_name': name,
+                    'Reference': reference,
+                    'Documents': name + '_' + reference + '_' + pdfname + '.pdf'
+                }
+
+                doculist.append(pdfs)
+
+
+pdfpath('Rocco - pdf')
+
 
 df1 = pd.DataFrame(loco_list)
 df2 = pd.concat(spare_part_list, ignore_index=True)
-# df3 = pd.DataFrame()
+df3 = pd.DataFrame(doculist)
 df4 = pd.DataFrame(imgslist)
 writer = pd.ExcelWriter('Roco - locomotives.xlsx', engine='xlsxwriter')
 df1.to_excel(writer, sheet_name='Model')
 df2.to_excel(writer, sheet_name='Spare parts')
-# # # # df3.to_excel(writer, sheet_name='Documents')
+df3.to_excel(writer, sheet_name='Documents')
 df4.to_excel(writer, sheet_name='Photos')
 writer.save()
 
